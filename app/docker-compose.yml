@@ -1,0 +1,24 @@
+services:
+  nas-auto-merge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: nas-auto-merge
+    user: "1026:100" # 改为群晖用户的 UID:GID，SSH 执行：id 用户名
+    environment:
+      WATCH_DIR: /watch
+      MERGED_DIR: /watch/merged
+      PART_DIR: /watch/part
+      FAILED_DIR: /watch/failed
+      RUN_AT: "02:00" # 每天开始扫描的时间，24 小时制
+      RUN_ON_START: "false"
+      MIN_FILE_AGE_SECONDS: "300"
+      MIN_PARTS: "2"
+      EXTENSIONS: .mp4,.mkv,.mov,.m4v,.ts
+      RECURSIVE: "false"
+      TZ: Asia/Shanghai
+    volumes:
+      - /volume1/HDD1/video-need-merge:/watch # 改为群晖上需要合并的视频文件夹路径
+      - /volume1/docker/nas-auto-merge/config:/config
+    network_mode: none
+    restart: unless-stopped

@@ -13,11 +13,15 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
-WATCH_DIR = Path(os.getenv("WATCH_DIR", "/watch")).resolve()
 STATE_FILE = Path(os.getenv("STATE_FILE", "/config/state.json"))
-MERGED_DIR = Path(os.getenv("MERGED_DIR", "/watch/merged")).resolve()
-PART_DIR = Path(os.getenv("PART_DIR", "/watch/part")).resolve()
-FAILED_DIR = Path(os.getenv("FAILED_DIR", "/watch/failed")).resolve()
+WATCH_DIRS = tuple(
+    Path(item.strip()).resolve()
+    for item in (os.getenv("WATCH_DIRS") or os.getenv("WATCH_DIR", "/watch")).split(",")
+    if item.strip()
+)
+MERGED_SUBDIR = os.getenv("MERGED_SUBDIR", "merged")
+PART_SUBDIR = os.getenv("PART_SUBDIR", "part")
+FAILED_SUBDIR = os.getenv("FAILED_SUBDIR", "failed")
 RUN_AT = os.getenv("RUN_AT", "02:00")
 RUN_ON_START = os.getenv("RUN_ON_START", "false").lower() in {"1", "true", "yes"}
 MIN_FILE_AGE_SECONDS = max(0, int(os.getenv("MIN_FILE_AGE_SECONDS", "300")))
@@ -87,42 +91,53 @@ def infer_plain_number(numbers):
     return max(numbers) + 1
 
 
-def output_path_for(path, base, ext):
-    relative_parent = path.parent.relative_to(WATCH_DIR)
-    return MERGED_DIR / relative_parent / f"{base}{ext}"
+def archive_dir(root, subdir):
+    return root / subdir
+
+
+def output_path_for(path, root, base, ext):
+    relative_parent = path.parent.relative_to(root)
+    return archive_dir(root, MERGED_SUBDIR) / relative_parent / f"{base}{ext}"
 
 
 def is_archived(path):
     return any(
-        path == archive_dir or archive_dir in path.parents
-        for archive_dir in (MERGED_DIR, PART_DIR, FAILED_DIR)
+        path == archive_root or archive_root in path.parents
+        for root in WATCH_DIRS
+        for archive_root in (
+            archive_dir(root, MERGED_SUBDIR),
+            archive_dir(root, PART_SUBDIR),
+            archive_dir(root, FAILED_SUBDIR),
+        )
     )
 
 
 def discover_groups():
-    candidates = WATCH_DIR.rglob("*") if RECURSIVE else WATCH_DIR.iterdir()
     groups = {}
 
-    for path in candidates:
-        if not path.is_file() or is_archived(path):
-            continue
-        match = PART_RE.match(path.name)
-        if not match or match.group("ext").lower() not in EXTENSIONS:
-            continue
+    for root in WATCH_DIRS:
+        candidates = root.rglob("*") if RECURSIVE else root.iterdir()
+        for path in candidates:
+            if not path.is_file() or is_archived(path):
+                continue
+            match = PART_RE.match(path.name)
+            if not match or match.group("ext").lower() not in EXTENSIONS:
+                continue
 
-        output = output_path_for(path, match.group("base"), match.group("ext"))
-        number = int(match.group("number"))
-        group = groups.setdefault(
-            output,
-            {
-                "numbered": {},
-                "duplicates": set(),
-                "plain_path": path.parent / f"{match.group('base')}{match.group('ext')}",
-            },
-        )
-        if number in group["numbered"]:
-            group["duplicates"].add(number)
-        group["numbered"].setdefault(number, path)
+            output = output_path_for(path, root, match.group("base"), match.group("ext"))
+            number = int(match.group("number"))
+            group = groups.setdefault(
+                output,
+                {
+                    "root": root,
+                    "numbered": {},
+                    "duplicates": set(),
+                    "plain_path": path.parent / f"{match.group('base')}{match.group('ext')}",
+                },
+            )
+            if number in group["numbered"]:
+                group["duplicates"].add(number)
+            group["numbered"].setdefault(number, path)
 
     ready = {}
     for output, group in groups.items():
@@ -135,13 +150,23 @@ def discover_groups():
             continue
 
         parts = {
-            number: {"number": number, "path": path, "plain": False}
+            number: {
+                "number": number,
+                "path": path,
+                "root": group["root"],
+                "plain": False,
+            }
             for number, path in group["numbered"].items()
         }
         plain_path = group["plain_path"]
         if plain_path.is_file():
             number = infer_plain_number(set(parts))
-            parts[number] = {"number": number, "path": plain_path, "plain": True}
+            parts[number] = {
+                "number": number,
+                "path": plain_path,
+                "root": group["root"],
+                "plain": True,
+            }
 
         if len(parts) >= MIN_PARTS:
             ready[output] = [parts[number] for number in sorted(parts)]
@@ -253,8 +278,8 @@ def move_sources(parts, destination_root):
     moves = []
     for part in parts:
         source = part["path"]
-        relative = source.relative_to(WATCH_DIR)
-        destination = destination_root / relative
+        root = part["root"]
+        destination = archive_dir(root, destination_root) / source.relative_to(root)
         if destination.exists():
             for index in range(1, 10000):
                 candidate = destination.with_name(
@@ -308,7 +333,7 @@ def scan_once():
                 output.name,
             )
             merge_parts(output, parts)
-            moved_parts = move_sources(parts, PART_DIR)
+            moved_parts = move_sources(parts, PART_SUBDIR)
             outputs_state[str(output)] = {
                 "source_signature": source_signature(moved_parts),
                 "parts": [str(part["path"]) for part in moved_parts],
@@ -317,14 +342,14 @@ def scan_once():
             }
             save_state(state)
             log.info("Created %s", output)
-            log.info("Moved %d source part(s) to %s", len(moved_parts), PART_DIR)
+            log.info("Moved %d source part(s) to %s", len(moved_parts), PART_SUBDIR)
         except Exception as exc:
             log.error("Merge failed for %s: %s", output.name, exc)
             try:
                 remaining = [part for part in parts if part["path"].exists()]
                 if remaining:
-                    move_sources(remaining, FAILED_DIR)
-                    log.info("Moved failed source part(s) to %s", FAILED_DIR)
+                    move_sources(remaining, FAILED_SUBDIR)
+                    log.info("Moved failed source part(s) to %s", FAILED_SUBDIR)
             except Exception as move_exc:
                 log.error("Could not move failed source parts: %s", move_exc)
 
@@ -362,8 +387,9 @@ def main():
     parser.add_argument("--run-once", action="store_true", help="scan immediately and exit")
     args = parser.parse_args()
 
-    if not WATCH_DIR.is_dir():
-        raise SystemExit(f"WATCH_DIR does not exist: {WATCH_DIR}")
+    missing = [str(root) for root in WATCH_DIRS if not root.is_dir()]
+    if missing:
+        raise SystemExit("WATCH_DIRS do not exist: " + ", ".join(missing))
     if args.run_once:
         scan_once()
     else:

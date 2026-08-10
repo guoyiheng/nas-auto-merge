@@ -46,6 +46,27 @@ logging.basicConfig(
 log = logging.getLogger("nas-auto-merge")
 
 
+def configure_timezone():
+    """Apply the container's TZ environment to Python's local-time APIs."""
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+
+def log_runtime_config():
+    timezone = os.getenv("TZ") or time.tzname[0]
+    log.info(
+        "Watching %d director%s: %s",
+        len(WATCH_DIRS),
+        "y" if len(WATCH_DIRS) == 1 else "ies",
+        ", ".join(str(root) for root in WATCH_DIRS),
+    )
+    log.info(
+        "Scheduler timezone: %s; daily scan at %s",
+        timezone,
+        RUN_AT,
+    )
+
+
 def load_state():
     try:
         return json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -387,6 +408,8 @@ def main():
     parser.add_argument("--run-once", action="store_true", help="scan immediately and exit")
     args = parser.parse_args()
 
+    configure_timezone()
+    log_runtime_config()
     missing = [str(root) for root in WATCH_DIRS if not root.is_dir()]
     if missing:
         raise SystemExit("WATCH_DIRS do not exist: " + ", ".join(missing))

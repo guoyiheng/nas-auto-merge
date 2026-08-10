@@ -83,9 +83,12 @@ and one matching volume mount. Do not mount multiple host directories to the sam
 ```bash
 mkdir -p /volume1/docker/lossless-merge/config
 cd /volume1/docker/lossless-merge/app
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 docker compose logs -f
 ```
+
+每次修改 `docker-compose.yml` 或 `src/merge_watcher.py` 后，都需要重新执行上面的命令，确保常驻定时进程使用最新的环境变量和脚本。
+启动日志会打印最终生效的监控目录，例如 `Watching 2 directories: /watch/source1, /watch/source2`。如果日志中没有这行，或目录列表不正确，说明运行中的容器不是当前配置创建的容器。
 
 Run an immediate one-time scan:
 

@@ -407,6 +407,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-once", action="store_true", help="scan immediately and exit")
     args = parser.parse_args()
+    if not os.getenv("WATCH_DIRS"):
+        log.warning(
+            "WATCH_DIRS is not set; using fallback watch dir(s): %s",
+            ", ".join(str(root) for root in WATCH_DIRS),
+        )
+    log.info(
+        "Scanning %d watch dir(s): %s",
+        len(WATCH_DIRS),
+        ", ".join(str(root) for root in WATCH_DIRS),
+    )
 
     configure_timezone()
     log_runtime_config()

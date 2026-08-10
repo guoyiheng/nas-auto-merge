@@ -84,7 +84,7 @@ and one matching volume mount. Do not mount multiple host directories to the sam
 mkdir -p /volume1/docker/lossless-merge/config
 cd /volume1/docker/lossless-merge/app
 docker compose up -d --build --force-recreate
-docker compose logs -f
+docker compose logs -f nas-auto-merge
 ```
 
 每次修改 `docker-compose.yml` 或 `src/merge_watcher.py` 后，都需要重新执行上面的命令，确保常驻定时进程使用最新的环境变量和脚本。
@@ -93,8 +93,10 @@ docker compose logs -f
 Run an immediate one-time scan:
 
 ```bash
-docker exec nas-auto-merge python /app/merge_watcher.py --run-once
+docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 ```
+
+这里使用 Compose 服务名 `nas-auto-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
 
 ## Configuration
 

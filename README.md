@@ -108,6 +108,27 @@ Run an immediate one-time scan:
 docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 ```
 
+### 构建时 apt 超时（deb.debian.org 无法连接）
+
+如果 `./update.sh` 在 `apt-get update` 阶段报 `Could not connect to deb.debian.org:80`，
+说明 NAS 无法直连 Debian 官方源。Dockerfile 默认已改用国内镜像源
+（`mirrors.aliyun.com`），也可以在构建时覆盖为其他镜像：
+
+```bash
+APT_MIRROR=mirrors.tuna.tsinghua.edu.cn docker compose build
+docker compose up -d
+```
+
+或者写入环境变量后正常使用 `./update.sh`：
+
+```bash
+# app/.env（已被 .gitignore 忽略）
+echo 'APT_MIRROR=mirrors.aliyun.com' > .env
+```
+
+仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，
+或在 `docker-compose.yml` 的 `build:` 下临时加入 `network: host` 后重试。
+
 这里使用 Compose 服务名 `nas-auto-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
 
 ## Configuration

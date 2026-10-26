@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+      args:
+        # 如镜像源不可用，可在此改回 deb.debian.org 或换用其他镜像
+        APT_MIRROR: ${APT_MIRROR:-mirrors.aliyun.com}
     container_name: nas-auto-merge
     environment:
       # 默认值；个人路径请在 docker-compose.override.yml 中覆盖

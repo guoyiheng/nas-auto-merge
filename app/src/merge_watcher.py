@@ -22,6 +22,11 @@ WATCH_DIRS = tuple(
 MERGED_SUBDIR = os.getenv("MERGED_SUBDIR", "merged")
 PART_SUBDIR = os.getenv("PART_SUBDIR", "part")
 FAILED_SUBDIR = os.getenv("FAILED_SUBDIR", "failed")
+DELETE_SOURCES_ON_SUCCESS = os.getenv("DELETE_SOURCES_ON_SUCCESS", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 RUN_AT = os.getenv("RUN_AT", "02:00")
 RUN_ON_START = os.getenv("RUN_ON_START", "false").lower() in {"1", "true", "yes"}
 MIN_FILE_AGE_SECONDS = max(0, int(os.getenv("MIN_FILE_AGE_SECONDS", "300")))
@@ -295,6 +300,17 @@ def merge_parts(output, parts):
         temp_output.unlink(missing_ok=True)
 
 
+def delete_sources(parts):
+    count = 0
+    for part in parts:
+        try:
+            part["path"].unlink(missing_ok=True)
+            count += 1
+        except OSError as exc:
+            log.warning("Could not delete source %s: %s", part["path"], exc)
+    return count
+
+
 def move_sources(parts, destination_root):
     moves = []
     for part in parts:
@@ -354,16 +370,29 @@ def scan_once():
                 output.name,
             )
             merge_parts(output, parts)
-            moved_parts = move_sources(parts, PART_SUBDIR)
-            outputs_state[str(output)] = {
-                "source_signature": source_signature(moved_parts),
-                "parts": [str(part["path"]) for part in moved_parts],
-                "output_identity": stat_identity(output),
-                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            }
-            save_state(state)
-            log.info("Created %s", output)
-            log.info("Moved %d source part(s) to %s", len(moved_parts), PART_SUBDIR)
+            if DELETE_SOURCES_ON_SUCCESS:
+                deleted = delete_sources(parts)
+                outputs_state[str(output)] = {
+                    "source_signature": signature,
+                    "parts": [],
+                    "sources_deleted": True,
+                    "output_identity": stat_identity(output),
+                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                }
+                save_state(state)
+                log.info("Created %s", output)
+                log.info("Deleted %d source part(s)", deleted)
+            else:
+                moved_parts = move_sources(parts, PART_SUBDIR)
+                outputs_state[str(output)] = {
+                    "source_signature": source_signature(moved_parts),
+                    "parts": [str(part["path"]) for part in moved_parts],
+                    "output_identity": stat_identity(output),
+                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                }
+                save_state(state)
+                log.info("Created %s", output)
+                log.info("Moved %d source part(s) to %s", len(moved_parts), PART_SUBDIR)
         except Exception as exc:
             log.error("Merge failed for %s: %s", output.name, exc)
             try:

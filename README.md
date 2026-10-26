@@ -26,7 +26,7 @@ flowchart TD
     E -- No --> F[Move inputs to each source failed/]
     E -- Yes --> G[FFmpeg concat with -c copy]
     G --> H[Write merged file to each source merged/]
-    H --> I[Move inputs to each source part/]
+    H --> I[Delete successful inputs, keep failures in failed/]
     I --> J[Persist /config/state.json]
 ```
 
@@ -37,7 +37,7 @@ flowchart TD
 - **Flexible file discovery** for `cd` and `part` names separated by dashes, underscores, dots, or spaces.
 - **Sparse numbering support** and automatic placement of an unnumbered base file into the first available position.
 - **Safety checks** for file age, duplicate part numbers, stream compatibility, and empty outputs.
-- **Non-destructive source handling**: inputs are moved to `part/` after success or `failed/` after an error.
+- **Non-destructive failure handling**: failed inputs are moved to `failed/`; successful inputs are deleted after the merge (configurable).
 - **Collision-safe archiving** that appends `.1`, `.2`, and higher suffixes instead of overwriting files.
 - **Persistent processing state** stored outside the container in `/config/state.json`.
 - **Isolated container** with `network_mode: none` and a minimal Python/FFmpeg image.
@@ -105,8 +105,9 @@ docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 | `WATCH_DIRS` | `/watch` | Comma-separated container directories to scan |
 | `WATCH_DIR` | `/watch` | Backward-compatible single-directory setting |
 | `MERGED_SUBDIR` | `merged` | Successful output subdirectory inside each source |
-| `PART_SUBDIR` | `part` | Archive subdirectory for successfully merged inputs |
+| `PART_SUBDIR` | `part` | Archive subdirectory for successful inputs when `DELETE_SOURCES_ON_SUCCESS` is `false` |
 | `FAILED_SUBDIR` | `failed` | Archive subdirectory for failed inputs |
+| `DELETE_SOURCES_ON_SUCCESS` | `true` | Delete source fragments after a successful merge; when `false`, they are archived to `part/` |
 | `RUN_AT` | `02:00` | Daily scan time in 24-hour format |
 | `RUN_ON_START` | `false` | Run one additional scan when the container starts |
 | `MIN_FILE_AGE_SECONDS` | `300` | Ignore files that may still be copying |
@@ -116,6 +117,8 @@ docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 | `TZ` | `Asia/Shanghai` | Scheduler timezone |
 
 Each configured source has independent `merged/`, `part/`, and `failed/` directories.
+By default successful source fragments are deleted and only failures are kept in `failed/`.
+Set `DELETE_SOURCES_ON_SUCCESS: "false"` to archive successful inputs in `part/` instead.
 If a configured source does not exist, the container exits and logs the missing path.
 
 ## Project Structure

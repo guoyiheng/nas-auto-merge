@@ -10,6 +10,7 @@ services:
       MERGED_SUBDIR: merged
       PART_SUBDIR: part
       FAILED_SUBDIR: failed
+      DELETE_SOURCES_ON_SUCCESS: "true" # 合并成功后删除源片段，只保留 failed/ 中的失败片段
       RUN_AT: "02:00" # 每天开始扫描的时间，24 小时制
       RUN_ON_START: "false"
       MIN_FILE_AGE_SECONDS: "300"

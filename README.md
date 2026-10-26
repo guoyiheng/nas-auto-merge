@@ -96,8 +96,10 @@ cd /volume1/docker/nas-auto-merge/app
 ./update.sh
 ```
 
-`update.sh` 会自动 `git pull` 并重建、重启容器。源码通过 `./src:/app` 挂载进容器，
-更新后重启即生效；个人配置保存在 `docker-compose.override.yml`，不会被覆盖。
+`update.sh` 会自动 `git pull` 并重启容器；镜像已存在时跳过构建。源码通过
+`./src:/app` 挂载进容器，更新后重启即生效；个人配置保存在
+`docker-compose.override.yml`，不会被覆盖。改动过 `Dockerfile` 时，用
+`./update.sh --build` 强制重建镜像。
 
 启动日志会打印最终生效的监控目录，例如 `Watching 2 directories: /watch/source1, /watch/source2`。
 如果日志中没有这行，或目录列表不正确，说明运行中的容器不是当前配置创建的容器。
@@ -108,24 +110,18 @@ Run an immediate one-time scan:
 docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 ```
 
-### 构建时 apt 超时（deb.debian.org 无法连接）
+### 构建时下载 ffmpeg 缓慢/失败（无法连接 GitHub）
 
-如果 `./update.sh` 在 `apt-get update` 阶段报 `Could not connect to deb.debian.org:80`，
-说明 NAS 无法直连 Debian 官方源。Dockerfile 默认已改用国内镜像源
-（`mirrors.aliyun.com`），也可以在构建时覆盖为其他镜像：
-
-```bash
-APT_MIRROR=mirrors.tuna.tsinghua.edu.cn docker compose build
-docker compose up -d
-```
-
-或者写入环境变量后正常使用 `./update.sh`：
+镜像不再用 apt 安装 ffmpeg，而是直接下载静态编译的 ffmpeg / ffprobe
+（约 156 MB，成功后被 Docker 缓存）。默认从 GitHub Release 下载，国内可能较慢或
+失败。此时可用 `FFMPEG_URL` 指向镜像/代理地址：
 
 ```bash
-# app/.env（已被 .gitignore 忽略）
-echo 'APT_MIRROR=mirrors.aliyun.com' > .env
+FFMPEG_URL='https://<mirror-or-proxy>/ffmpeg-master-latest-linux64-gpl.tar.xz' \
+  ./update.sh --build
 ```
 
+注意选择与 NAS 架构匹配的包（x86_64 用 `linux64`，ARM64 用 `linuxarm64`）。
 仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，
 或在 `docker-compose.yml` 的 `build:` 下临时加入 `network: host` 后重试。
 
@@ -162,9 +158,9 @@ nas-auto-merge/
     ├── docker-compose.yml                  # 通用基础配置（不要改）
     ├── docker-compose.override.example.yml # 个人配置模板
     ├── docker-compose.override.yml         # 你的个人配置（不入库，由模板复制）
-    ├── update.sh                           # 一键更新：git pull + 重建重启
+    ├── update.sh                           # 一键更新：git pull + 重启（可选重建）
     ├── docker/
-    │   └── Dockerfile                      # Python、FFmpeg、tini 镜像
+    │   └── Dockerfile                      # Python + 静态 FFmpeg 镜像
     └── src/
         └── merge_watcher.py                # 发现、校验、合并与调度逻辑
 ```

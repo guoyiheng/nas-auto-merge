@@ -7,7 +7,7 @@
 # docker-compose.override.yml 已在 .gitignore 中，
 # `git pull` 更新代码时不会被改动，之后更新只需执行 ./update.sh。
 services:
-  nas-lossless-merge:
+  nas-auto-merge:
     # 群晖用户 UID:GID，SSH 执行 `id 用户名` 查看
     user: "1026:100"
     environment:
@@ -16,4 +16,4 @@ services:
     volumes:
       - /volume1/HDD1/video-need-merge:/watch/source1 # 第一个源目录
       - /volume1/HDD1/video-need-merge-2:/watch/source2 # 第二个源目录，按需修改
-      - /volume1/docker/nas-lossless-merge/config:/config # 持久化配置目录
+      - /volume1/docker/nas-auto-merge/config:/config # 持久化配置目录

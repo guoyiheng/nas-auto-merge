@@ -4,14 +4,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: nas-auto-merge
-    user: "1026:100" # 改为群晖用户的 UID:GID，SSH 执行：id 用户名
     environment:
-      WATCH_DIRS: /watch/source1,/watch/source2
+      # 默认值；个人路径请在 docker-compose.override.yml 中覆盖
+      WATCH_DIRS: /watch/source1
       MERGED_SUBDIR: merged
       PART_SUBDIR: part
       FAILED_SUBDIR: failed
-      DELETE_SOURCES_ON_SUCCESS: "true" # 合并成功后删除源片段，只保留 failed/ 中的失败片段
-      RUN_AT: "02:00" # 每天开始扫描的时间，24 小时制
+      DELETE_SOURCES_ON_SUCCESS: "true"
+      RUN_AT: "02:00"
       RUN_ON_START: "false"
       MIN_FILE_AGE_SECONDS: "300"
       MIN_PARTS: "2"
@@ -19,8 +19,7 @@ services:
       RECURSIVE: "false"
       TZ: Asia/Shanghai
     volumes:
-      - /volume1/HDD1/video-need-merge:/watch/source1 # 第一个源目录
-      - /volume1/HDD1/video-need-merge-2:/watch/source2 # 第二个源目录，按需修改
-      - /volume1/docker/nas-auto-merge/config:/config
+      # 源码挂载：更新代码后无需重新构建镜像，重启即生效
+      - ./src:/app
     network_mode: none
     restart: unless-stopped

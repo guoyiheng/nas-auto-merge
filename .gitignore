@@ -1,3 +1,8 @@
 __pycache__/
 *.py[cod]
 .DS_Store
+
+# 个人运行配置，不纳入版本控制
+app/docker-compose.override.yml
+.env
+app/.env

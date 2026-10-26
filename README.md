@@ -57,38 +57,50 @@ Part numbers may be sparse. An unnumbered `movie.mp4` is assigned to the first m
 
 ## Quick Start
 
-Each NAS source directory must be mounted to a different container path. The service
-keeps `merged/`, `part/`, and `failed/` inside each source directory, so files from
-different sources never share an archive directory.
+代码与个人配置分离：所有个人路径和 UID:GID 都写在 `docker-compose.override.yml` 中，
+该文件不被 git 跟踪，因此更新代码时不需要重新填写配置。
 
-For two source directories, configure `app/docker-compose.yml` like this:
-
-```yaml
-environment:
-  WATCH_DIRS: /watch/source1,/watch/source2
-volumes:
-  - /volume1/HDD1/video-need-merge:/watch/source1
-  - /volume1/HDD1/video-need-merge-2:/watch/source2
-```
-
-Use the same pattern to add more directories: add one container path to `WATCH_DIRS`
-and one matching volume mount. Do not mount multiple host directories to the same
-`/watch` path.
-
-1. Copy the `app/` directory to your NAS, for example `/volume1/docker/lossless-merge/app`.
-2. Update the host video paths, `WATCH_DIRS`, and the container `user` in `app/docker-compose.yml`.
-3. Create a persistent configuration directory.
-4. Build and start the service.
+### 1. 在 NAS 上克隆仓库
 
 ```bash
-mkdir -p /volume1/docker/lossless-merge/config
-cd /volume1/docker/lossless-merge/app
-docker compose up -d --build --force-recreate
+mkdir -p /volume1/docker
+cd /volume1/docker
+git clone https://github.com/guoyiheng/lossless-merge.git
+cd lossless-merge/app
+```
+
+### 2. 创建个人配置（只需一次）
+
+```bash
+cp docker-compose.override.example.yml docker-compose.override.yml
+vi docker-compose.override.yml    # 修改视频目录、UID:GID、config 目录
+```
+
+每个 NAS 源目录挂载到不同的容器路径，服务会在每个源目录内独立维护
+`merged/`、`part/`、`failed/`。增加目录时，同时增加一条 `WATCH_DIRS` 路径和
+一条 volume 挂载即可；不要把多个宿主目录挂到同一个 `/watch` 路径。
+
+### 3. 启动
+
+```bash
+./update.sh
 docker compose logs -f nas-auto-merge
 ```
 
-每次修改 `docker-compose.yml` 或 `src/merge_watcher.py` 后，都需要重新执行上面的命令，确保常驻定时进程使用最新的环境变量和脚本。
-启动日志会打印最终生效的监控目录，例如 `Watching 2 directories: /watch/source1, /watch/source2`。如果日志中没有这行，或目录列表不正确，说明运行中的容器不是当前配置创建的容器。
+## 更新代码
+
+以后每次更新只需一条命令：
+
+```bash
+cd /volume1/docker/lossless-merge/app
+./update.sh
+```
+
+`update.sh` 会自动 `git pull` 并重建、重启容器。源码通过 `./src:/app` 挂载进容器，
+更新后重启即生效；个人配置保存在 `docker-compose.override.yml`，不会被覆盖。
+
+启动日志会打印最终生效的监控目录，例如 `Watching 2 directories: /watch/source1, /watch/source2`。
+如果日志中没有这行，或目录列表不正确，说明运行中的容器不是当前配置创建的容器。
 
 Run an immediate one-time scan:
 
@@ -126,11 +138,14 @@ If a configured source does not exist, the container exits and logs the missing 
 ```text
 lossless-merge/
 └── app/
-    ├── docker-compose.yml   # Runtime configuration and NAS mounts
+    ├── docker-compose.yml                  # 通用基础配置（不要改）
+    ├── docker-compose.override.example.yml # 个人配置模板
+    ├── docker-compose.override.yml         # 你的个人配置（不入库，由模板复制）
+    ├── update.sh                           # 一键更新：git pull + 重建重启
     ├── docker/
-    │   └── Dockerfile       # Python, FFmpeg, and tini image
+    │   └── Dockerfile                      # Python、FFmpeg、tini 镜像
     └── src/
-        └── merge_watcher.py # Discovery, validation, merge, and scheduler
+        └── merge_watcher.py                # 发现、校验、合并与调度逻辑
 ```
 
 ## Technology Stack

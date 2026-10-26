@@ -110,18 +110,23 @@ Run an immediate one-time scan:
 docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 ```
 
-### 构建时下载 ffmpeg 缓慢/失败（无法连接 GitHub）
+### 构建时拉取 ffmpeg 缓慢
 
-镜像不再用 apt 安装 ffmpeg，而是直接下载静态编译的 ffmpeg / ffprobe
-（约 156 MB，成功后被 Docker 缓存）。默认从 GitHub Release 下载，国内可能较慢或
-失败。此时可用 `FFMPEG_URL` 指向镜像/代理地址：
+镜像里的 ffmpeg / ffprobe 不再从 GitHub Release 下载，而是通过多阶段构建从
+Docker Hub 的 [`mwader/static-ffmpeg`](https://hub.docker.com/r/mwader/static-ffmpeg)
+取（静态编译、无外部依赖）。
+
+如果拉取慢，给群晖 Container Manager 配置 Docker Hub 镜像加速即可，同时也会
+加速 `python:3.11-slim-bookworm` 基础镜像：
+
+Container Manager → 注册表 → 设置 → 编辑 → 添加镜像加速地址。
+
+需要更换 ffmpeg 版本时用 `FFMPEG_IMAGE` 覆盖：
 
 ```bash
-FFMPEG_URL='https://<mirror-or-proxy>/ffmpeg-master-latest-linux64-gpl.tar.xz' \
-  ./update.sh --build
+FFMPEG_IMAGE=mwader/static-ffmpeg:9.0.2-1 ./update.sh --build
 ```
 
-注意选择与 NAS 架构匹配的包（x86_64 用 `linux64`，ARM64 用 `linuxarm64`）。
 仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，
 或在 `docker-compose.yml` 的 `build:` 下临时加入 `network: host` 后重试。
 

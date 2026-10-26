@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        # 静态 ffmpeg 下载地址；GitHub 慢时可换成镜像/代理地址
-        FFMPEG_URL: ${FFMPEG_URL:-https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz}
+        # 静态 ffmpeg 来源镜像（Docker Hub）；如拉取慢可在此换国内加速地址或版本
+        FFMPEG_IMAGE: ${FFMPEG_IMAGE:-mwader/static-ffmpeg:9.0.2-1}
     # 让 Docker 注入 init 进程回收僵尸进程（替代镜像里的 tini）
     init: true
     container_name: nas-auto-merge

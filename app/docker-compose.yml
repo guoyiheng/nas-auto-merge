@@ -4,8 +4,10 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        # 如镜像源不可用，可在此改回 deb.debian.org 或换用其他镜像
-        APT_MIRROR: ${APT_MIRROR:-mirrors.aliyun.com}
+        # 静态 ffmpeg 下载地址；GitHub 慢时可换成镜像/代理地址
+        FFMPEG_URL: ${FFMPEG_URL:-https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz}
+    # 让 Docker 注入 init 进程回收僵尸进程（替代镜像里的 tini）
+    init: true
     container_name: nas-auto-merge
     environment:
       # 默认值；个人路径请在 docker-compose.override.yml 中覆盖

@@ -48,7 +48,7 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s %(message)s",
 )
-log = logging.getLogger("nas-auto-merge")
+log = logging.getLogger("nas-lossless-merge")
 
 
 def configure_timezone():

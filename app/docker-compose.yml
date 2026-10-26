@@ -1,9 +1,9 @@
 services:
-  nas-auto-merge:
+  nas-lossless-merge:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: nas-auto-merge
+    container_name: nas-lossless-merge
     environment:
       # 默认值；个人路径请在 docker-compose.override.yml 中覆盖
       WATCH_DIRS: /watch/source1

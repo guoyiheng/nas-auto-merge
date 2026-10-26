@@ -65,8 +65,8 @@ Part numbers may be sparse. An unnumbered `movie.mp4` is assigned to the first m
 ```bash
 mkdir -p /volume1/docker
 cd /volume1/docker
-git clone https://github.com/guoyiheng/lossless-merge.git
-cd lossless-merge/app
+git clone https://github.com/guoyiheng/nas-lossless-merge.git
+cd nas-lossless-merge/app
 ```
 
 ### 2. 创建个人配置（只需一次）
@@ -84,7 +84,7 @@ vi docker-compose.override.yml    # 修改视频目录、UID:GID、config 目录
 
 ```bash
 ./update.sh
-docker compose logs -f nas-auto-merge
+docker compose logs -f nas-lossless-merge
 ```
 
 ## 更新代码
@@ -92,7 +92,7 @@ docker compose logs -f nas-auto-merge
 以后每次更新只需一条命令：
 
 ```bash
-cd /volume1/docker/lossless-merge/app
+cd /volume1/docker/nas-lossless-merge/app
 ./update.sh
 ```
 
@@ -105,10 +105,10 @@ cd /volume1/docker/lossless-merge/app
 Run an immediate one-time scan:
 
 ```bash
-docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
+docker compose exec nas-lossless-merge python /app/merge_watcher.py --run-once
 ```
 
-这里使用 Compose 服务名 `nas-auto-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
+这里使用 Compose 服务名 `nas-lossless-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
 
 ## Configuration
 
@@ -136,7 +136,7 @@ If a configured source does not exist, the container exits and logs the missing 
 ## Project Structure
 
 ```text
-lossless-merge/
+nas-lossless-merge/
 └── app/
     ├── docker-compose.yml                  # 通用基础配置（不要改）
     ├── docker-compose.override.example.yml # 个人配置模板

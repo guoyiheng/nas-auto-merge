@@ -174,6 +174,33 @@ gunzip -c /volume1/docker/nas-auto-merge/static-ffmpeg.tar.gz | docker load
 
 这里使用 Compose 服务名 `nas-auto-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
 
+## 自测
+
+### 快速检查
+
+确认容器内 ffmpeg / ffprobe 可用，并立刻扫描一次：
+
+```bash
+cd /volume1/docker/nas-auto-merge/app
+docker compose exec nas-auto-merge ffmpeg -version | head -n 1
+docker compose exec nas-auto-merge ffprobe -version | head -n 1
+docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
+```
+
+### 端到端自测
+
+`test.sh` 会在临时目录里用镜像内的 ffmpeg 生成两段测试分片，跑一次合并，
+再校验产物、源分片清理和时长，全程不碰你的真实视频目录：
+
+```bash
+cd /volume1/docker/nas-auto-merge/app
+./test.sh
+```
+
+全部通过时最后打印 `==> 测试通过 ✅`。任何一步失败都会以非零退出码结束。
+测试用到的目录参数（`MIN_FILE_AGE_SECONDS=0` 等）都是临时覆盖，不影响正式配置。
+
+
 ## Configuration
 
 | Variable | Default | Description |
@@ -206,6 +233,7 @@ nas-auto-merge/
     ├── docker-compose.override.example.yml # 个人配置模板
     ├── docker-compose.override.yml         # 你的个人配置（不入库，由模板复制）
     ├── update.sh                           # 一键更新：git pull + 重启（可选重建）
+    ├── test.sh                             # 端到端自测：生成测试分片并验证合并
     ├── docker/
     │   └── Dockerfile                      # Python + 静态 FFmpeg 镜像
     └── src/

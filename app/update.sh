@@ -31,6 +31,19 @@ else
     echo "==> 未检测到 git 仓库，跳过代码拉取（请自行同步 app/ 目录）"
 fi
 
+# bind mount 的宿主目录不会自动创建。默认的持久化状态目录是 <repo>/config，
+# 容器以 override 里的 user（如 1026:100）运行，所以目录必须对该用户可写。
+# 若你在 override 中把 /config 挂到了别的路径，请自行创建并设置权限。
+CONFIG_DIR="$REPO_ROOT/config"
+mkdir -p "$CONFIG_DIR"
+CONTAINER_USER="$(sed -nE 's/^[[:space:]]*user:[[:space:]]*"?([0-9]+:[0-9]+)"?.*/\1/p' docker-compose.override.yml | head -n 1)"
+if [ -n "$CONTAINER_USER" ] && chown "$CONTAINER_USER" "$CONFIG_DIR" 2>/dev/null; then
+    :
+else
+    # 拿不到 UID:GID（或 chown 失败）时退而求其次，保证容器用户可写
+    chmod 777 "$CONFIG_DIR" 2>/dev/null || true
+fi
+
 # 解析镜像名：优先问 compose（--images），老版本不支持时回退到默认命名
 # <项目名>-nas-auto-merge（本项目即 app-nas-auto-merge）。
 IMAGE="$(docker compose config --images 2>/dev/null | head -n 1 || true)"

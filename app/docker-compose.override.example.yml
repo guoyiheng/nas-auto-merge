@@ -16,4 +16,4 @@ services:
     volumes:
       - /volume1/HDD1/video-need-merge:/watch/source1 # 第一个源目录
       - /volume1/HDD1/video-need-merge-2:/watch/source2 # 第二个源目录，按需修改
-      - /volume1/docker/nas-auto-merge/config:/config # 持久化配置目录
+      - /volume1/docker/nas-auto-merge/config:/config # 持久化状态目录（./update.sh 会自动创建）

@@ -76,6 +76,10 @@ cp docker-compose.override.example.yml docker-compose.override.yml
 vi docker-compose.override.yml    # 修改视频目录、UID:GID、config 目录
 ```
 
+持久化状态目录（默认 `<repo>/config`）是 bind mount 的宿主目录，Docker 不会自动
+创建。`./update.sh` 会自动创建并保证容器用户可写；如果你把它改成别的路径，需要
+自己 `mkdir -p` 并确保 override 里 `user:` 指定的用户对它有写权限。
+
 每个 NAS 源目录挂载到不同的容器路径，服务会在每个源目录内独立维护
 `merged/`、`part/`、`failed/`。增加目录时，同时增加一条 `WATCH_DIRS` 路径和
 一条 volume 挂载即可；不要把多个宿主目录挂到同一个 `/watch` 路径。

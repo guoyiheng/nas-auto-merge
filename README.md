@@ -120,15 +120,29 @@ docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 Docker Hub 的 [`mwader/static-ffmpeg`](https://hub.docker.com/r/mwader/static-ffmpeg)
 取（静态编译、无外部依赖）。
 
-如果拉取慢，给群晖 Container Manager 配置 Docker Hub 镜像加速即可，同时也会
-加速 `python:3.11-slim-bookworm` 基础镜像：
-
+如果拉取失败或很慢，给群晖 Container Manager 配置 Docker Hub 镜像加速即可，
+同时也会加速 `python:3.11-slim-bookworm` 基础镜像：
 Container Manager → 注册表 → 设置 → 编辑 → 添加镜像加速地址。
+
+注意：
+
+- 一些早已停用的地址（如 `dockerhub.azk8s.cn`、`registry.docker-cn.com`、
+  `docker.mirrors.ustc.edu.cn`）现在会返回 403 或超时，请从列表里删掉。
+- 可用示例：`https://docker.1ms.run`、`https://docker.m.daocloud.io`；最稳的是
+  阿里云个人加速器（登录 cr.console.aliyun.com → 镜像工具 → 镜像加速器，
+  获取 `https://<id>.mirror.aliyuncs.com`）。
+- 改完加速地址后需要重启 Container Manager / Docker 服务才生效。
+
+验证：
+
+```bash
+docker pull mwader/static-ffmpeg:9.0.2-1
+```
 
 需要更换 ffmpeg 版本时用 `FFMPEG_IMAGE` 覆盖：
 
 ```bash
-FFMPEG_IMAGE=mwader/static-ffmpeg:9.0.2-1 ./update.sh --build
+FFMPEG_IMAGE=mwader/static-ffmpeg:<tag> ./update.sh --build
 ```
 
 仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，

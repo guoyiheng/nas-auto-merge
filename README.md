@@ -139,11 +139,18 @@ Container Manager → 注册表 → 设置 → 编辑 → 添加镜像加速地�
 docker pull mwader/static-ffmpeg:9.0.2-1
 ```
 
-需要更换 ffmpeg 版本时用 `FFMPEG_IMAGE` 覆盖：
+#### 手动指定镜像源（registry-mirrors 不可用时）
+
+`registry-mirrors` 只对 `docker.io` 的镜像生效。直接在 FROM 里写完整的主机名前缀，
+Docker 就会把它当成另一个 registry，绕过坏掉的加速源：
 
 ```bash
-FFMPEG_IMAGE=mwader/static-ffmpeg:<tag> ./update.sh --build
+PYTHON_IMAGE=docker.1ms.run/library/python:3.11-slim-bookworm \
+FFMPEG_IMAGE=docker.1ms.run/mwader/static-ffmpeg:9.0.2-1 \
+./update.sh --build
 ```
+
+这两个变量（`PYTHON_IMAGE`、`FFMPEG_IMAGE`）也可用于更换基础镜像 / ffmpeg 版本。
 
 仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，
 或在 `docker-compose.yml` 的 `build:` 下临时加入 `network: host` 后重试。

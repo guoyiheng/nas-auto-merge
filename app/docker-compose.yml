@@ -4,7 +4,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        # 静态 ffmpeg 来源镜像（Docker Hub）；如拉取慢可在此换国内加速地址或版本
+        # 基础镜像与静态 ffmpeg 来源都可用环境变量覆盖（便于手动指定镜像源）
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim-bookworm}
         FFMPEG_IMAGE: ${FFMPEG_IMAGE:-mwader/static-ffmpeg:9.0.2-1}
     # 让 Docker 注入 init 进程回收僵尸进程（替代镜像里的 tini）
     init: true

@@ -1,13 +1,17 @@
 # syntax=docker/dockerfile:1
 
-# 静态编译的 ffmpeg / ffprobe 直接从 Docker Hub 取，避免从 GitHub Release
-# 下载（国内经常很慢）。多阶段构建，最终镜像只保留两个二进制文件。
-# 需要换版本时用 build-arg 覆盖：
-#   FFMPEG_IMAGE=mwader/static-ffmpeg:<tag> ./update.sh --build
+# 两个镜像地址都可用 build-arg 覆盖。registry-mirrors 只对 docker.io 生效，
+# 所以当加速源不可用时，直接写完整的主机名前缀即可绕过它，例如：
+#   PYTHON_IMAGE=docker.1ms.run/library/python:3.11-slim-bookworm \
+#   FFMPEG_IMAGE=docker.1ms.run/mwader/static-ffmpeg:9.0.2-1 \
+#   ./update.sh --build
+ARG PYTHON_IMAGE=python:3.11-slim-bookworm
 ARG FFMPEG_IMAGE=mwader/static-ffmpeg:9.0.2-1
+
+# 静态编译的 ffmpeg / ffprobe，多阶段构建，最终镜像只保留两个二进制文件。
 FROM ${FFMPEG_IMAGE} AS ffmpeg
 
-FROM python:3.11-slim-bookworm
+FROM ${PYTHON_IMAGE}
 
 COPY --from=ffmpeg /ffmpeg /ffprobe /usr/local/bin/
 

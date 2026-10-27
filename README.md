@@ -114,7 +114,7 @@ Run an immediate one-time scan:
 docker compose exec nas-auto-merge python /app/merge_watcher.py --run-once
 ```
 
-### 构建时拉取 ffmpeg 缓慢
+### 构建时拉取 ffmpeg 镜像失败 / 缓慢
 
 镜像里的 ffmpeg / ffprobe 不再从 GitHub Release 下载，而是通过多阶段构建从
 Docker Hub 的 [`mwader/static-ffmpeg`](https://hub.docker.com/r/mwader/static-ffmpeg)
@@ -147,6 +147,23 @@ FFMPEG_IMAGE=mwader/static-ffmpeg:<tag> ./update.sh --build
 
 仍失败时，通常是 Docker 本身出网被墙，需要给 Docker 守护进程配置代理，
 或在 `docker-compose.yml` 的 `build:` 下临时加入 `network: host` 后重试。
+
+#### 离线导入镜像（镜像源都用不了时）
+
+在能正常拉镜像的机器上（Mac 的 Docker Desktop / 云主机）：
+
+```bash
+docker pull --platform linux/amd64 mwader/static-ffmpeg:9.0.2-1
+docker save mwader/static-ffmpeg:9.0.2-1 | gzip > static-ffmpeg.tar.gz
+scp static-ffmpeg.tar.gz user@nas:/volume1/docker/nas-auto-merge/
+```
+
+在 NAS 上导入后重新构建（之后就不需要联网拉这个镜像了）：
+
+```bash
+gunzip -c /volume1/docker/nas-auto-merge/static-ffmpeg.tar.gz | docker load
+./update.sh --build
+```
 
 这里使用 Compose 服务名 `nas-auto-merge`，不依赖群晖 Container Manager 为容器添加的项目名前缀。如果是在其他目录执行命令，请先切换到包含 `docker-compose.yml` 的目录，或加上对应的 `-f` 参数。
 
